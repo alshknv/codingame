@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Codingame
 {
-    public class Player
+    public static class Player
     {
         private static List<int> GetClosestElevators(int curPos, int width, List<int> elevators)
         {
@@ -23,39 +23,33 @@ namespace Codingame
             if (closestLeft >= 0) result.Add(closestLeft);
             return result;
         }
+
+        // straightforward recursive approach, enough for this simple problem
         private static (int[] path, int length) RecursiveSearch(int floor, int width, int exitFloor, int exitPos, int curPos, int genPos, List<int>[] elevators, List<int> path)
         {
-            path = new List<int>(path)
-        {
-            curPos
-        };
-
-            if (floor == exitFloor && curPos == exitPos)
+            path = new List<int>(path) { curPos };
+            if (floor == exitFloor)
             {
+                //exit recursion return path
                 var prevPos = genPos;
-                var pathLength = 0;
+                var pathLength = Math.Abs(exitPos - curPos);
                 for (int i = 0; i < path.Count; i++)
                 {
                     pathLength += Math.Abs(path[i] - prevPos) + 1;
                     prevPos = path[i];
                 }
+                if (exitPos != curPos)
+                    path.Add(exitPos);
                 return (path.ToArray(), pathLength);
             }
-            int[] minPath = null;
-            int minLength = width * elevators.Length + 1;
-            var closestElevators = GetClosestElevators(curPos, width, elevators[floor]);
-            if (floor == exitFloor)
-                closestElevators.Add(exitPos);
-            foreach (var elevator in closestElevators)
+            (int[] path, int length) minPath = (null, (width * elevators.Length) + 1);
+            foreach (var elevator in GetClosestElevators(curPos, width, elevators[floor]))
             {
-                var foundPath = RecursiveSearch(floor < exitFloor ? floor + 1 : floor, width, exitFloor, exitPos, elevator, genPos, elevators, path);
-                if (foundPath.length < minLength)
-                {
-                    minLength = foundPath.length;
-                    minPath = foundPath.path;
-                }
+                var foundPath = RecursiveSearch(floor + 1, width, exitFloor, exitPos, elevator, genPos, elevators, path);
+                if (foundPath.length < minPath.length)
+                    minPath = foundPath;
             }
-            return (minPath, minLength);
+            return minPath;
         }
 
         public static (int, int)[] GetCloneBlocks(int width, int exitFloor, int exitPos, int genPos, List<int>[] elevators)
@@ -65,6 +59,7 @@ namespace Codingame
             var right = true;
             for (int i = 0; i < path.Length; i++)
             {
+                // place block if we need to change direction
                 if (i > 0 && ((right && path[i - 1] > path[i]) || (!right && path[i - 1] < path[i])))
                 {
                     blocks.Add((i - 1, path[i - 1]));

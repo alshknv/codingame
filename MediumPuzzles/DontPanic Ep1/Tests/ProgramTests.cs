@@ -17,8 +17,9 @@ namespace Tests
                 new List<int>() { 4, 10 },
                 new List<int>(),
             });
-            blocks.Should().HaveCount(1);
+            blocks.Should().HaveCount(2);
             blocks[0].Should().Be((0, 3));
+            blocks[1].Should().Be((1, 1));
         }
     }
 }
