@@ -19,6 +19,8 @@ namespace Codingame
     {
         public (int x, int y) Position;
         public int Value;
+        public int OriginalValue;
+        public int VisitMask { get; set; }
         public List<Link> Links = new List<Link>();
     }
 
@@ -56,10 +58,12 @@ namespace Codingame
                 {
                     if (char.IsDigit(data[y][x]))
                     {
+                        var value = int.Parse(data[y][x].ToString());
                         var node = new Node()
                         {
                             Position = (x, y),
-                            Value = int.Parse(data[y][x].ToString())
+                            Value = value,
+                            OriginalValue = value
                         };
                         nodes.Add(node);
                         map[y][x] = nodes.Count - 1;
@@ -98,7 +102,7 @@ namespace Codingame
 
         private static bool ShareSourceOrTarget(Link l1, Link l2)
         {
-            return l1.Source.Position == l2.Source.Position || l1.Source.Position == l2.Source.Position
+            return l1.Source.Position == l2.Source.Position || l1.Source.Position == l2.Target.Position
                 || l1.Target.Position == l2.Source.Position || l1.Target.Position == l2.Target.Position;
         }
 
@@ -110,18 +114,55 @@ namespace Codingame
             int o4 = Orientation(l2, l1.Target.Position);
 
             // if links do intersect, but not if they share source or target
-            return o1 != o2 && o3 != o4 && (!ShareSourceOrTarget(l1, l2))
-            && (!ShareSourceOrTarget(l1, l2)) && (!ShareSourceOrTarget(l2, l1))
-            && (!ShareSourceOrTarget(l2, l1));
+            return o1 != o2 && o3 != o4 && !ShareSourceOrTarget(l1, l2);
+        }
+
+        private static bool LinksIntersect(Link[] links)
+        {
+            var presentLinks = links.Where(l => l.Value < l.OriginalValue);
+            return presentLinks.Any(l => presentLinks.Any(l2 => DoIntersect(l, l2)));
+        }
+
+        private static bool NodesConnected(Node[] nodes)
+        {
+            var enabledNodes = nodes.Where(n => n.OriginalValue == n.Links.Sum(l => l.OriginalValue - l.Value)).ToArray();
+            if (enabledNodes.Length <= 1) return true;
+            for (int j = 0; j < nodes.Length; j++)
+            {
+                nodes[j].VisitMask = 0;
+            }
+            for (int i = 0; i < enabledNodes.Length; i++)
+            {
+                var queue = new Queue<Node>();
+                queue.Enqueue(enabledNodes[i]);
+                while (queue.Count > 0)
+                {
+                    var node = queue.Dequeue();
+                    if (node.Value == node.OriginalValue) continue;
+                    if (((node.VisitMask & (1 << i)) >> i) == 0)
+                    {
+                        node.VisitMask |= 1 << i;
+                        foreach (var link in node.Links)
+                        {
+                            if (link.Value == link.OriginalValue) continue;
+                            queue.Enqueue(link.Source.Position == node.Position ? link.Target : link.Source);
+                        }
+                    }
+                }
+            }
+            return enabledNodes.All(n => n.VisitMask == Math.Pow(2, enabledNodes.Length) - 1);
         }
 
         private static bool RecursiveConnect(Link[] links, Node[] nodes, int idx)
         {
-            if (nodes.All(n => n.Value == 0)) return true;
+            if (nodes.All(n => n.Value == 0) && NodesConnected(nodes))
+            {
+                NodesConnected(nodes);
+                return true;
+            }
             if (idx >= links.Length) return false;
-            if (nodes.Any(n => n.Links.Sum(l => l.Value) < n.Value)) return false;
-            var presentLinks = links.Where(l => l.Value < l.OriginalValue);
-            if (presentLinks.Any(l => presentLinks.Any(l2 => DoIntersect(l, l2)))) return false;
+            if (nodes.Any(n => n.Links.Sum(l => l.OriginalValue - l.Value) > n.OriginalValue)) return false;
+            if (LinksIntersect(links)) return false;
 
             for (var d = links[idx].Value; d >= 0; d--)
             {
@@ -166,7 +207,6 @@ namespace Codingame
                 .ToArray();
             }
             return new string[0];
-
         }
 
         static void Main(string[] args)
