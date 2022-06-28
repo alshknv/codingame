@@ -156,10 +156,7 @@ namespace Codingame
         private static bool RecursiveConnect(Link[] links, Node[] nodes, int idx)
         {
             if (nodes.All(n => n.Value == 0) && NodesConnected(nodes))
-            {
-                NodesConnected(nodes);
                 return true;
-            }
             if (idx >= links.Length) return false;
             if (nodes.Any(n => n.Links.Sum(l => l.OriginalValue - l.Value) > n.OriginalValue)) return false;
             if (LinksIntersect(links)) return false;
@@ -182,7 +179,6 @@ namespace Codingame
         public static string[] ConnectAll(string[] data)
         {
             var (links, nodes) = Init(data);
-            var connections = new List<string>();
             Node[] completeNodes;
             do
             {
