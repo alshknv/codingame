@@ -123,55 +123,64 @@ namespace Codingame
             return presentLinks.Any(l => presentLinks.Any(l2 => DoIntersect(l, l2)));
         }
 
-        private static bool NodesConnected(Node[] nodes)
+        private static List<string> RemoveForcedConnections(Node[] nodes)
         {
-            var enabledNodes = nodes.Where(n => n.OriginalValue == n.Links.Sum(l => l.OriginalValue - l.Value)).ToArray();
-            if (enabledNodes.Length <= 1) return true;
-            for (int j = 0; j < nodes.Length; j++)
+            var connections = new List<string>();
+            Node[] fcNodes = null;
+            do
             {
-                nodes[j].VisitMask = 0;
-            }
-            for (int i = 0; i < enabledNodes.Length; i++)
-            {
-                var queue = new Queue<Node>();
-                queue.Enqueue(enabledNodes[i]);
-                while (queue.Count > 0)
+                fcNodes = nodes.Where(n => n.Value > 0 && n.Links.Sum(l => l.Value) == n.Value).ToArray();
+                for (int n = 0; n < fcNodes.Length; n++)
                 {
-                    var node = queue.Dequeue();
-                    if (node.Value == node.OriginalValue) continue;
-                    if (((node.VisitMask & (1 << i)) >> i) == 0)
+                    if (fcNodes[n].Value == 0) continue;
+                    foreach (var l in fcNodes[n].Links)
                     {
-                        node.VisitMask |= 1 << i;
-                        foreach (var link in node.Links)
+                        if (l.Value > 0)
                         {
-                            if (link.Value == link.OriginalValue) continue;
-                            queue.Enqueue(link.Source.Position == node.Position ? link.Target : link.Source);
+                            connections.Add($"{l.Source.Position.x} {l.Source.Position.y} {l.Target.Position.x} {l.Target.Position.y} {l.OriginalValue}");
+                            //l.Source.OriginalValue -= l.OriginalValue;
+                            l.Source.Value -= l.OriginalValue;
+                            //l.Target.OriginalValue -= l.OriginalValue;
+                            l.Target.Value -= l.OriginalValue;
+                            l.Value = l.OriginalValue;
+                            //l.Value = 0;
+                            //n.Value -= l.OriginalValue;
+                            //l.Value = 0;
                         }
                     }
+                    //fcNodes[n].Links = fcNodes[n].Links.Where(l => l.OriginalValue > 0).ToList();
                 }
             }
-            return enabledNodes.All(n => n.VisitMask == Math.Pow(2, enabledNodes.Length) - 1);
+            while (fcNodes.Length > 0);
+            return connections;
         }
 
-        private static bool RecursiveConnect(Link[] links, Node[] nodes, int idx)
+        private static bool RecursiveConnect(Node[] nodes, Link[] links, Node[] connectedNodes)
         {
-            if (nodes.All(n => n.Value == 0) && NodesConnected(nodes))
+            if (connectedNodes.Length == nodes.Length && nodes.All(n => n.Value == 0))
                 return true;
-            if (idx >= links.Length) return false;
             if (nodes.Any(n => n.Links.Sum(l => l.OriginalValue - l.Value) > n.OriginalValue)) return false;
             if (LinksIntersect(links)) return false;
+            var outgoingLinks = connectedNodes.SelectMany(n => n.Links.Where(l => l.Value > 0)).ToArray();
 
-            for (var d = links[idx].Value; d >= 0; d--)
+            for (var l = 0; l < outgoingLinks.Length; l++)
             {
-                if (links[idx].Value < d || links[idx].Source.Value < d || links[idx].Target.Value < d)
-                    continue;
-                links[idx].Value -= d;
-                links[idx].Source.Value -= d;
-                links[idx].Target.Value -= d;
-                if (RecursiveConnect(links, nodes, idx + 1)) return true;
-                links[idx].Value += d;
-                links[idx].Source.Value += d;
-                links[idx].Target.Value += d;
+                for (var d = outgoingLinks[l].Value; d > 0; d--)
+                {
+                    if (outgoingLinks[l].Source.Value < d || outgoingLinks[l].Target.Value < d)
+                        continue;
+                    outgoingLinks[l].Value -= d;
+                    outgoingLinks[l].Source.Value -= d;
+                    outgoingLinks[l].Target.Value -= d;
+                    var cNodes = new List<Node>(connectedNodes)
+                    {
+                        connectedNodes.Contains(outgoingLinks[l].Source) ? outgoingLinks[l].Target : outgoingLinks[l].Source
+                    };
+                    if (RecursiveConnect(nodes, links, cNodes.ToArray())) return true;
+                    outgoingLinks[l].Value += d;
+                    outgoingLinks[l].Source.Value += d;
+                    outgoingLinks[l].Target.Value += d;
+                }
             }
             return false;
         }
@@ -179,30 +188,28 @@ namespace Codingame
         public static string[] ConnectAll(string[] data)
         {
             var (links, nodes) = Init(data);
-            Node[] completeNodes;
-            do
+            var connections = RemoveForcedConnections(nodes);
+            //nodes = nodes.Where(n => n.OriginalValue > 0).ToArray();
+            //links = links.Where(l => l.OriginalValue > 0).ToArray();
+            /*foreach (var node in nodes)
             {
-                completeNodes = nodes.Where(n => n.Value > 0 && n.Links.Sum(l => l.Value) == n.Value).ToArray();
-                foreach (var n in completeNodes)
+                node.Links = node.Links.Where(l => l.OriginalValue > 0).ToList();
+                foreach (var link in node.Links)
                 {
-                    foreach (var l in n.Links)
-                    {
-                        if (l.Value == 0) continue;
-                        l.Source.Value -= l.Value;
-                        l.Target.Value -= l.Value;
-                        l.Value = 0;
-                    }
+                    var linkValue = Math.Min(2, Math.Min(link.Target.Value, link.Source.Value));
+                    link.Value = linkValue;
+                    link.OriginalValue = linkValue;
                 }
-            } while (completeNodes.Length > 0);
-
-            if (RecursiveConnect(links, nodes, 0))
+            }*/
+            if (RecursiveConnect(nodes, links, nodes.Take(1).ToArray()))
             {
-                return links
+                connections.AddRange(
+                links
                 .Select((l) => l.OriginalValue == l.Value ? "" : $"{l.Source.Position.x} {l.Source.Position.y} {l.Target.Position.x} {l.Target.Position.y} {l.OriginalValue - l.Value}")
                 .Where(l => !string.IsNullOrEmpty(l))
-                .ToArray();
+                );
             }
-            return new string[0];
+            return connections.ToArray();
         }
 
         static void Main(string[] args)
