@@ -27,7 +27,6 @@ public static class Solution
                 break;
             }
             outStringBuilder.Append(cgxString[i..quoteBegin]);
-            if (quoteBegin < 0) break;
             var quoteEnd = cgxString.IndexOf('\'', quoteBegin + 1);
             var quotedString = cgxString[quoteBegin..(quoteEnd + 1)];
             if (!subIndices.TryGetValue(quotedString, out int existingIdx))
