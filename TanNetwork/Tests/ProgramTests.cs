@@ -28,7 +28,7 @@ namespace Tests
         [Fact]
         public void Large()
         {
-            var path = Solution.Solve(new string[] {
+            Solution.Solve(new string[] {
                 "StopArea:EINS",
                 "StopArea:GALH",
                 "1019",
@@ -476,7 +476,7 @@ namespace Tests
                 "StopArea:HIPP,\"Hippodrome\",,47.24758804,-1.56774346,,,1,",
                 "StopArea:HLAN,\"Haute Lande\",,47.15477595,-1.52346368,,,1,",
                 "StopArea:HMLL,\"Houmaille\",,47.18903322,-1.58699443,,,1,",
-                "StopArea:HMVE,\"8 Mai\",,47.17268755,-1.47234134,,,1,",
+                "StopArea:HMVE,\"8 Mai1\",,47.17268755,-1.47234134,,,1,",
                 "StopArea:HODI,\"Hotel Dieu\",,47.21185747,-1.55331137,,,1,",
                 "StopArea:HOGR,\"Hongrie\",,47.21607054,-1.52347891,,,1,",
                 "StopArea:HOSE,\"Housseau\",,47.28098900,-1.49837609,,,1,",
@@ -3457,9 +3457,7 @@ namespace Tests
                 "StopArea:HODI StopArea:COMM",
                 "StopArea:HODI StopArea:ADEL",
                 "StopArea:HODI StopArea:MTEI"
-            });
-
-            path.Should().BeEquivalentTo(new string[] {
+            }).Should().BeEquivalentTo(new string[] {
                 "Einstein",
                 "Rene Cassin",
                 "Chene des Anglais",
